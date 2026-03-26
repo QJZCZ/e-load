@@ -1,0 +1,28 @@
+# Keil generated files
+*.axf
+*.bin
+*.elf
+*.hex
+*.htm
+*.lib
+*.lst
+*.map
+*.obj
+*.plg
+*.uvoptx
+*.uvprojx
+*.tra
+
+# Build directories
+MDK-ARM/Objects/
+MDK-ARM/Listings/
+
+# VS Code files
+.vscode/
+
+# Other generated files
+*.log
+*.zip
+
+# Backup files
+*~
