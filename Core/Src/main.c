@@ -24,6 +24,7 @@
 /* USER CODE BEGIN Includes */
 #include "hardware_test.h"
 #include <rtthread.h>
+#include "pin.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -54,21 +55,25 @@ UART_HandleTypeDef huart3;
 /* USER CODE BEGIN PV */
 
 /* 静态线程栈 */
-static char hardware_test_thread_stack[512] __attribute__((aligned(RT_ALIGN_SIZE)));
+static char hardware_test_thread_stack[2048] __attribute__((aligned(RT_ALIGN_SIZE)));
 
 /* 线程控制块 */
 static struct rt_thread hardware_test_thread;
+
+/* 引脚定义 */
+static rt_base_t led_orange_pin;
+static rt_base_t led_blue_pin;
 
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
-static void MX_GPIO_Init(void);
-static void MX_ADC2_Init(void);
-static void MX_DAC1_Init(void);
-static void MX_I2C1_Init(void);
-static void MX_USART1_UART_Init(void);
-static void MX_USART3_UART_Init(void);
+void MX_GPIO_Init(void);
+void MX_ADC2_Init(void);
+void MX_DAC1_Init(void);
+void MX_I2C1_Init(void);
+void MX_USART1_UART_Init(void);
+void MX_USART3_UART_Init(void);
 /* USER CODE BEGIN PFP */
 
 static void hardware_test_thread_entry(void *parameter);
@@ -90,33 +95,17 @@ int main(void)
 
   /* USER CODE END 1 */
 
-  /* MCU Configuration--------------------------------------------------------*/
-
-  /* Reset of all peripherals, Initializes the Flash interface and the Systick. */
-  HAL_Init();
-
-  /* USER CODE BEGIN Init */
-
-  /* USER CODE END Init */
-
-  /* Configure the system clock */
-  SystemClock_Config();
-
-  /* USER CODE BEGIN SysInit */
-
-  /* USER CODE END SysInit */
-
-  /* Initialize all configured peripherals */
-  MX_GPIO_Init();
-  MX_ADC2_Init();
-  MX_DAC1_Init();
-  MX_I2C1_Init();
-  MX_USART1_UART_Init();
-  MX_USART3_UART_Init();
   /* USER CODE BEGIN 2 */
-  
   // 初始化硬件测试
   HardwareTest_Init();
+  
+  // 初始化LED引脚
+  led_orange_pin = rt_pin_get("PA.1");
+  led_blue_pin = rt_pin_get("PA.0");
+  
+  // 设置LED引脚为输出模式
+  rt_pin_mode(led_orange_pin, PIN_MODE_OUTPUT);
+  rt_pin_mode(led_blue_pin, PIN_MODE_OUTPUT);
   
   // 创建硬件测试线程
   rt_thread_init(&hardware_test_thread,              // 线程控制块
@@ -130,9 +119,6 @@ int main(void)
   
   // 启动线程
   rt_thread_startup(&hardware_test_thread);
-  
-  // 启动RT-Thread
-  rtthread_startup();
   
   /* USER CODE END 2 */
 
@@ -154,10 +140,14 @@ static void hardware_test_thread_entry(void *parameter)
   while (1)
   {
     // 运行硬件测试
-    HardwareTest_Run();
-    
+      //    rt_pin_write(led_orange_pin, PIN_HIGH);  // 橙灯亮
+          rt_pin_write(led_blue_pin, PIN_HIGH); // 蓝灯亮
     // 使用RT-Thread延时
-    rt_thread_mdelay(100);
+          rt_thread_mdelay(100);
+	     //   rt_pin_write(led_orange_pin, PIN_LOW);  // 橙灯灭
+          rt_pin_write(led_blue_pin, PIN_LOW); // 蓝灯灭
+	  
+                  rt_thread_mdelay(100);
   }
 }
 
@@ -213,7 +203,7 @@ void SystemClock_Config(void)
   * @param None
   * @retval None
   */
-static void MX_ADC2_Init(void)
+void MX_ADC2_Init(void)
 {
 
   /* USER CODE BEGIN ADC2_Init 0 */
@@ -268,7 +258,7 @@ static void MX_ADC2_Init(void)
   * @param None
   * @retval None
   */
-static void MX_DAC1_Init(void)
+void MX_DAC1_Init(void)
 {
 
   /* USER CODE BEGIN DAC1_Init 0 */
@@ -306,7 +296,7 @@ static void MX_DAC1_Init(void)
   * @param None
   * @retval None
   */
-static void MX_I2C1_Init(void)
+void MX_I2C1_Init(void)
 {
 
   /* USER CODE BEGIN I2C1_Init 0 */
@@ -352,7 +342,7 @@ static void MX_I2C1_Init(void)
   * @param None
   * @retval None
   */
-static void MX_USART1_UART_Init(void)
+void MX_USART1_UART_Init(void)
 {
 
   /* USER CODE BEGIN USART1_Init 0 */
@@ -363,7 +353,7 @@ static void MX_USART1_UART_Init(void)
 
   /* USER CODE END USART1_Init 1 */
   huart1.Instance = USART1;
-  huart1.Init.BaudRate = 38400;
+  huart1.Init.BaudRate = 115200;
   huart1.Init.WordLength = UART_WORDLENGTH_8B;
   huart1.Init.StopBits = UART_STOPBITS_1;
   huart1.Init.Parity = UART_PARITY_NONE;
@@ -387,7 +377,7 @@ static void MX_USART1_UART_Init(void)
   * @param None
   * @retval None
   */
-static void MX_USART3_UART_Init(void)
+void MX_USART3_UART_Init(void)
 {
 
   /* USER CODE BEGIN USART3_Init 0 */
@@ -398,7 +388,7 @@ static void MX_USART3_UART_Init(void)
 
   /* USER CODE END USART3_Init 1 */
   huart3.Instance = USART3;
-  huart3.Init.BaudRate = 38400;
+  huart3.Init.BaudRate = 115200;
   huart3.Init.WordLength = UART_WORDLENGTH_8B;
   huart3.Init.StopBits = UART_STOPBITS_1;
   huart3.Init.Parity = UART_PARITY_NONE;
@@ -422,7 +412,7 @@ static void MX_USART3_UART_Init(void)
   * @param None
   * @retval None
   */
-static void MX_GPIO_Init(void)
+void MX_GPIO_Init(void)
 {
   GPIO_InitTypeDef GPIO_InitStruct = {0};
 

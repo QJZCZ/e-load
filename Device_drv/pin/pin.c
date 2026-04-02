@@ -54,8 +54,9 @@
 
 /**
  * @brief STM32端口最大数量
+ * STM32F334x8: GPIOA(0), GPIOB(1), GPIOC(2), GPIOD(3), GPIOF(5)
  */
-#define __STM32_PORT_MAX 8u
+#define __STM32_PORT_MAX 6u
 
 /**
  * @brief 支持的端口最大数量
@@ -79,7 +80,7 @@ static const struct pin_irq_map pin_irq_map[] =
 {
     {GPIO_PIN_0, EXTI0_IRQn},
     {GPIO_PIN_1, EXTI1_IRQn},
-    {GPIO_PIN_2, EXTI2_IRQn},
+    {GPIO_PIN_2, EXTI2_TSC_IRQn},
     {GPIO_PIN_3, EXTI3_IRQn},
     {GPIO_PIN_4, EXTI4_IRQn},
     {GPIO_PIN_5, EXTI9_5_IRQn},
@@ -573,7 +574,7 @@ void EXTI1_IRQHandler(void)
 /**
  * @brief EXTI2中断处理函数
  */
-void EXTI2_IRQHandler(void)
+void EXTI2_TSC_IRQHandler(void)
 {
     rt_interrupt_enter();
     HAL_GPIO_EXTI_IRQHandler(GPIO_PIN_2);
@@ -647,8 +648,12 @@ int rt_hw_pin_init(void)
     __HAL_RCC_GPIOC_CLK_ENABLE();
 #endif
 
-#if defined(__HAL_RCC_GPIOE_CLK_ENABLE)
-    __HAL_RCC_GPIOE_CLK_ENABLE();
+#if defined(__HAL_RCC_GPIOD_CLK_ENABLE)
+    __HAL_RCC_GPIOD_CLK_ENABLE();
+#endif
+
+#if defined(__HAL_RCC_GPIOF_CLK_ENABLE)
+    __HAL_RCC_GPIOF_CLK_ENABLE();
 #endif
 
     return RT_EOK;
