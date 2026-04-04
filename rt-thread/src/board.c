@@ -66,12 +66,7 @@ void rt_hw_board_init(void)
     /* 初始化UART3 */
     MX_USART3_UART_Init();
     
-    /* 串口测试 */
-  
-    char test_msg2[]= "board init.....!\r\n";
-    HAL_UART_Transmit(&huart3, (uint8_t*)test_msg2, sizeof(test_msg2) - 1, 1000);
-    rt_kprintf("rt_kprintf ok\n");
-    
+ 
     /* 初始化PIN设备驱动 */
     rt_hw_pin_init();
     

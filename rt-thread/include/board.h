@@ -15,3 +15,4 @@
 #include "stm32f3xx_hal.h"
 
 #endif /* __BOARD_H__ */
+

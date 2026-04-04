@@ -8,8 +8,8 @@
  */
      
 #include <rtthread.h>
-#include <rtdevice.h>
-#include <qled.h>
+#include "pin.h"
+#include "qled.h"
 #include <string.h>
 
 #define DBG_TAG "qled"
@@ -38,6 +38,9 @@ typedef struct
 }qled_data_t;
 
 static qled_data_t qled_datas[QLED_TOTAL];
+
+static struct rt_thread qled_thread;
+static char qled_thread_stack[QLED_THREAD_STACK_SIZE];
 
 static void qled_pin_init(int pin)
 {
@@ -204,16 +207,26 @@ static void qled_thread_entry(void *params)
     }
 }
 
-static int qled_init(void)
+int qled_init(void)
 {
-    rt_thread_t tid = rt_thread_create(QLED_THREAD_NAME, qled_thread_entry, NULL, 
-                                        QLED_THREAD_STACK_SIZE, QLED_THREAD_PRIO, 20);
-    RT_ASSERT(tid != RT_NULL);
+    rt_err_t result;
+    
     qled_datas_init();
-    rt_thread_startup(tid);
+    
+    result = rt_thread_init(&qled_thread, 
+                            QLED_THREAD_NAME, 
+                            qled_thread_entry, 
+                            RT_NULL, 
+                            qled_thread_stack, 
+                            sizeof(qled_thread_stack), 
+                            QLED_THREAD_PRIO, 
+                            20);
+    RT_ASSERT(result == RT_EOK);
+    
+    rt_thread_startup(&qled_thread);
+    
     return(RT_EOK);
 }
-INIT_PREV_EXPORT(qled_init);
 
 int qled_add(int pin, int level)
 {

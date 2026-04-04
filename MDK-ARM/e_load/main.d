@@ -51,3 +51,10 @@ e_load\main.o: ../rt-thread/include/rthw.h
 e_load\main.o: ../rt-thread/include/rtklibc.h
 e_load\main.o: ../rt-thread/include/klibc/kstring.h
 e_load\main.o: ../rt-thread/include/klibc/kstdio.h
+e_load\main.o: ../Device_drv/pin/pin.h
+e_load\main.o: ../package/rt-thread-qled/inc/qled.h
+e_load\main.o: ../package/rt-thread-qled/inc/typedef.h
+e_load\main.o: D:\keil\ARM\ARMCC\Bin\..\include\stdbool.h
+e_load\main.o: ../Core/Inc/hardware_test_thread.h
+e_load\main.o: ../Core/Inc/button_scan_thread.h
+e_load\main.o: ../Core/Inc/oled_display_thread.h

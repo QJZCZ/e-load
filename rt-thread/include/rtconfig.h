@@ -15,15 +15,15 @@
 #define RT_USING_TIMER             1
 #define RT_USING_SEMAPHORE         0
 #define RT_USING_MUTEX             0
-#define RT_USING_HEAP              0
+//#define RT_USING_HEAP              0
 #define RT_USING_MODULE            0
 #define RT_USING_SIGNALS           0
 #define RT_USING_MESSAGEQUEUE      0
 #define RT_USING_RTC               0
-#define RT_USING_USER_MAIN         0
+#define RT_USING_USER_MAIN         1
 
 /* 内存管理 - 禁用动态内存 */
-#define RT_USING_HEAP              0
+//#define RT_USING_HEAP              0
 
 /* 调试功能 - 禁用所有调试 */
 #define RT_DEBUG                   0
@@ -45,8 +45,11 @@
 #define RT_USING_OTA               0
 #define RT_USING_AT                0
 
+/* 设备驱动 */
+#define RT_USING_I2C              1
+#define RT_USING_I2C1             1
+
 /* CPU架构 */
 #define RT_USING_ARCH_CORTEX_M4
 
 #endif /* RT_CONFIG_H__ */
-

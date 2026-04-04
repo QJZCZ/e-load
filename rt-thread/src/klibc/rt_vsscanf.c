@@ -684,6 +684,8 @@ static int scanf_parse(char *ccltab, const char *inp, int *inr, char const *fmt0
     /* never reached */
 }
 
+
+/* 
 int rt_vsscanf(const char *str, const char *format, va_list ap)
 {
     int ret, nremain;
@@ -695,6 +697,26 @@ int rt_vsscanf(const char *str, const char *format, va_list ap)
 
     ret = scanf_parse(ccltab, str, &nremain, format, ap);
     rt_free(ccltab);
+
+    return ret;
+} */
+int rt_vsscanf(const char *str, const char *format, va_list ap)
+{
+    int ret, nremain;
+#ifdef RT_USING_HEAP
+    char *ccltab = rt_malloc(256);
+
+    if (ccltab == RT_NULL) {
+        return -1;
+    }
+#else
+    char ccltab[256];
+#endif
+
+    ret = scanf_parse(ccltab, str, &nremain, format, ap);
+#ifdef RT_USING_HEAP
+    rt_free(ccltab);
+#endif
 
     return ret;
 }

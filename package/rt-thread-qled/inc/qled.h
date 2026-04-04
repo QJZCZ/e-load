@@ -9,8 +9,8 @@
 #ifndef __QLED_H__
 #define __QLED_H__
 
-#include <typedef.h>
-#include <rtconfig.h>
+#include "typedef.h"
+#include "rtconfig.h"
 
 #ifndef QLED_TOTAL
 #define QLED_TOTAL               8       //support led maximum total
@@ -25,12 +25,18 @@
 #endif
 
 #ifndef QLED_THREAD_STACK_SIZE
-#define QLED_THREAD_STACK_SIZE   1024    //led driver thread stack size
+#define QLED_THREAD_STACK_SIZE   512    //led driver thread stack size
 #endif
 
 #ifndef QLED_THREAD_PRIO
 #define QLED_THREAD_PRIO         2       //led driver thread priority
 #endif
+
+/* 
+ * @brief   initialize led driver
+ * @retval  0 - success, other - error
+ */
+int qled_init(void);
 
 /* 
  * @brief   add led to driver

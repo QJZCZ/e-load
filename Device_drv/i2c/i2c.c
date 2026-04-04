@@ -11,6 +11,7 @@
 
 #include <board.h>
 #include "i2c.h"
+#include "drv_i2c.h"
 #include "pin.h"
 
 #ifdef RT_USING_I2C
@@ -37,7 +38,7 @@ static struct rt_i2c_config i2c_config[] =
      RT_I2C1_CONFIG,
 #endif
 #ifdef RT_USING_I2C2
-     RT_I2C1_CONFIG
+     RT_I2C2_CONFIG
 #endif
 };
 

@@ -25,6 +25,10 @@
 #include "hardware_test.h"
 #include <rtthread.h>
 #include "pin.h"
+#include "qled.h"
+#include "hardware_test_thread.h"
+#include "button_scan_thread.h"
+#include "oled_display_thread.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -50,19 +54,14 @@ DAC_HandleTypeDef hdac1;
 I2C_HandleTypeDef hi2c1;
 
 UART_HandleTypeDef huart1;
+
 UART_HandleTypeDef huart3;
 
 /* USER CODE BEGIN PV */
 
-/* 静态线程栈 */
-static char hardware_test_thread_stack[2048] __attribute__((aligned(RT_ALIGN_SIZE)));
-
-/* 线程控制块 */
-static struct rt_thread hardware_test_thread;
-
-/* 引脚定义 */
-static rt_base_t led_orange_pin;
-static rt_base_t led_blue_pin;
+/* ???? */
+rt_base_t led_orange_pin;
+rt_base_t led_blue_pin;
 
 /* USER CODE END PV */
 
@@ -76,7 +75,6 @@ void MX_USART1_UART_Init(void);
 void MX_USART3_UART_Init(void);
 /* USER CODE BEGIN PFP */
 
-static void hardware_test_thread_entry(void *parameter);
 
 /* USER CODE END PFP */
 
@@ -96,29 +94,31 @@ int main(void)
   /* USER CODE END 1 */
 
   /* USER CODE BEGIN 2 */
-  // 初始化硬件测试
+  // ????????
   HardwareTest_Init();
   
-  // 初始化LED引脚
+  // ???qled??
+  qled_init();
+  
+  // ???LED??
   led_orange_pin = rt_pin_get("PA.1");
   led_blue_pin = rt_pin_get("PA.0");
   
-  // 设置LED引脚为输出模式
+  // ??LED?qled??
+  qled_add(led_orange_pin, 1);  // ????????
+  qled_add(led_blue_pin, 1);    // ????????
+  
+  // ??LED????????
   rt_pin_mode(led_orange_pin, PIN_MODE_OUTPUT);
   rt_pin_mode(led_blue_pin, PIN_MODE_OUTPUT);
   
-  // 创建硬件测试线程
-  rt_thread_init(&hardware_test_thread,              // 线程控制块
-                 "hardware_test",                  // 线程名称
-                 hardware_test_thread_entry,        // 线程入口函数
-                 RT_NULL,                          // 线程参数
-                 hardware_test_thread_stack,        // 线程栈
-                 sizeof(hardware_test_thread_stack), // 栈大小
-                 8,                                // 优先级
-                 10);                              // 时间片
+  // ??????????
+  hardware_test_thread_init();
   
-  // 启动线程
-  rt_thread_startup(&hardware_test_thread);
+  // ??????????
+  button_scan_thread_init();
+  
+  oled_display_thread_init();
   
   /* USER CODE END 2 */
 
@@ -133,24 +133,7 @@ int main(void)
     /* USER CODE END 3 */
   }
 }
-
-/* 硬件测试线程入口 */
-static void hardware_test_thread_entry(void *parameter)
-{
-  while (1)
-  {
-    // 运行硬件测试
-      //    rt_pin_write(led_orange_pin, PIN_HIGH);  // 橙灯亮
-          rt_pin_write(led_blue_pin, PIN_HIGH); // 蓝灯亮
-    // 使用RT-Thread延时
-          rt_thread_mdelay(100);
-	     //   rt_pin_write(led_orange_pin, PIN_LOW);  // 橙灯灭
-          rt_pin_write(led_blue_pin, PIN_LOW); // 蓝灯灭
-	  
-                  rt_thread_mdelay(100);
-  }
-}
-
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 /**
   * @brief System Clock Configuration
   * @retval None
@@ -280,7 +263,7 @@ void MX_DAC1_Init(void)
   /** DAC channel OUT1 config
   */
   sConfig.DAC_Trigger = DAC_TRIGGER_NONE;
-  sConfig.DAC_OutputBuffer = DAC_OUTPUTBUFFER_ENABLE;
+  sConfig.DAC_OutputBuffer = DAC_OUTPUTBUFFER_DISABLE;
   if (HAL_DAC_ConfigChannel(&hdac1, &sConfig, DAC_CHANNEL_1) != HAL_OK)
   {
     Error_Handler();
