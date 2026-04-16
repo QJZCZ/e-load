@@ -13,10 +13,23 @@
 #include "pin.h"
 #include "qled.h"
 #include "flexible_button.h"
-
+#include "oled_display_thread.h"
+#include "oled.h"
+#include "hardware_test_thread.h"
 /* 外部变量声明 */
 extern rt_base_t led_orange_pin;
 extern rt_base_t led_blue_pin;
+
+/* 外部全局变量声明，用于控制DAC输出 */
+extern float g_dac_voltage;
+extern uint8_t g_dac_enabled;
+
+/* 外部变量声明，用于模式和目标值 */
+extern TargetValues target_values;
+extern Mode current_mode;
+
+/* 外部变量声明，用于页面切换 */
+extern uint8_t current_page;
 
 /* 按钮定义 */
 static flex_button_t button_right; // 右
@@ -26,7 +39,7 @@ static flex_button_t button_left; // 左
 static flex_button_t button_up; // 上
 
 /* 静态线程栈 */
-static char button_scan_thread_stack[256] __attribute__((aligned(RT_ALIGN_SIZE)));
+static char button_scan_thread_stack[512] __attribute__((aligned(RT_ALIGN_SIZE)));
 
 /* 线程控制块 */
 static struct rt_thread button_scan_thread;
@@ -52,25 +65,92 @@ static void button_callback(void* arg)
     switch (btn->event)
     {
     case FLEX_BTN_PRESS_CLICK:
-        if (btn->id == 1)
+        if (btn->id == 1) // 右
         {
-            rt_kprintf("右 button clicked: Output to serial port\n");
+            // 切换到下一个页面
+            current_page = (current_page + 1) % 3;
+            oled_switch_page(current_page);
+            rt_kprintf("右 button clicked: Next page\n");
         }
-        else if (btn->id == 2)
+        else if (btn->id == 2) // 中
         {
-            rt_kprintf("中 button clicked: Output to serial port\n");
+            if (current_page == PAGE_MODE_SELECT){
+                // 确认选择当前模式
+                rt_kprintf("Mode selected: %d\n", current_mode);
+                // 切换到输出页面
+                current_page = PAGE_OUTPUT;
+                oled_switch_page(current_page);
+            } else {
+           
+            }
         }
-        else if (btn->id == 3)
+        else if (btn->id == 3) // 下
         {
-            rt_kprintf("下 button clicked: Output to serial port\n");
+            if (current_page == PAGE_SET){
+                if(current_mode == MODE_CONST_CURRENT){
+                  // 减少目标电流
+                  target_values.g_target_current -= 0.1f;
+                if (target_values.g_target_current < 0.0f) target_values.g_target_current = 0.0f;
+                }
+                else if(current_mode == MODE_CONST_POWER){
+                     // 减少目标功率
+                     target_values.g_target_power -= 0.1f;
+                    if (target_values.g_target_power < 0.0f) target_values.g_target_power = 0.0f;
+                }
+                else if(current_mode == MODE_CONST_RESISTANCE){
+                     // 减少目标电阻
+                     target_values.g_target_resistance -= 0.1f;
+                    if (target_values.g_target_resistance < 0.0f) target_values.g_target_resistance = 0.0f;
+                }
+                // 保存配置到Flash
+                flash_write_config();
+            } else if (current_page == PAGE_MODE_SELECT){
+                // 在模式选择页面，切换到下一个模式
+                current_mode = (current_mode + 1) % 3;
+            }
         }
-        else if (btn->id == 4)
+        else if (btn->id == 4) // 左
         {
-            rt_kprintf("左 button clicked: Output to serial port\n");
+            // 切换到上一个页面
+            current_page = (current_page - 1 + 3) % 3;
+            oled_switch_page(current_page);
+        
         }
-        else if (btn->id == 5)
+        else if (btn->id == 5) // 上
         {
-            rt_kprintf("上 button clicked: Output to serial port\n");
+            if (current_page == PAGE_SET){
+                if(current_mode == MODE_CONST_CURRENT){
+                     // 增加目标电流
+                     target_values.g_target_current += 0.1f;
+                    if (target_values.g_target_current > 3.0f) target_values.g_target_current = 3.0f;
+                }
+                else if(current_mode == MODE_CONST_POWER){
+                     // 增加目标功率
+                     target_values.g_target_power += 0.1f;
+                    if (target_values.g_target_power > 3.0f) target_values.g_target_power = 3.0f;
+                }
+                else if(current_mode == MODE_CONST_RESISTANCE){
+                     // 增加目标电阻
+                     target_values.g_target_resistance += 0.1f;
+                    if (target_values.g_target_resistance > 30.0f) target_values.g_target_resistance = 30.0f;
+                }
+                // 保存配置到Flash
+                flash_write_config();
+            } else if (current_page == PAGE_MODE_SELECT){
+                // 在模式选择页面，切换到上一个模式
+                current_mode = (current_mode - 1 + 3) % 3;
+            }
+        }
+         OLED_Clear(0);
+        break;
+    case FLEX_BTN_PRESS_LONG_HOLD_UP:
+        if (btn->id == 2) // 中键长按
+        {
+            if (current_page == PAGE_OUTPUT){
+            // 切换DAC输出使能状态
+            g_dac_enabled = !g_dac_enabled;
+            OLED_Clear(0);
+            }   
         }
         break;
     default:
