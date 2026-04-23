@@ -39,7 +39,7 @@ static flex_button_t button_left; // 左
 static flex_button_t button_up; // 上
 
 /* 静态线程栈 */
-static char button_scan_thread_stack[512] __attribute__((aligned(RT_ALIGN_SIZE)));
+static char button_scan_thread_stack[1024] __attribute__((aligned(RT_ALIGN_SIZE)));
 
 /* 线程控制块 */
 static struct rt_thread button_scan_thread;
@@ -65,19 +65,18 @@ static void button_callback(void* arg)
     switch (btn->event)
     {
     case FLEX_BTN_PRESS_CLICK:
+      rt_kprintf("FLEX_BTN_PRESS_CLICK\n");
         if (btn->id == 1) // 右
         {
             // 切换到下一个页面
             current_page = (current_page + 1) % 3;
             oled_switch_page(current_page);
-            rt_kprintf("右 button clicked: Next page\n");
+          
         }
         else if (btn->id == 2) // 中
         {
             if (current_page == PAGE_MODE_SELECT){
-                // 确认选择当前模式
-                rt_kprintf("Mode selected: %d\n", current_mode);
-                // 切换到输出页面
+
                 current_page = PAGE_OUTPUT;
                 oled_switch_page(current_page);
             } else {
@@ -139,11 +138,36 @@ static void button_callback(void* arg)
             } else if (current_page == PAGE_MODE_SELECT){
                 // 在模式选择页面，切换到上一个模式
                 current_mode = (current_mode - 1 + 3) % 3;
-            }
+            } 
+             rt_kprintf("上 button clicked\n");
         }
          OLED_Clear(0);
         break;
     case FLEX_BTN_PRESS_LONG_HOLD_UP:
+  
+       if (btn->id == 5) // 上
+        {// 上键有点问题
+            if (current_page == PAGE_SET){
+                if(current_mode == MODE_CONST_CURRENT){
+                     // 增加目标电流
+                     target_values.g_target_current += 0.1f;
+                    if (target_values.g_target_current > 3.0f) target_values.g_target_current = 3.0f;
+                }
+                else if(current_mode == MODE_CONST_POWER){
+                     // 增加目标功率
+                     target_values.g_target_power += 0.1f;
+                    if (target_values.g_target_power > 3.0f) target_values.g_target_power = 3.0f;
+                }
+                else if(current_mode == MODE_CONST_RESISTANCE){
+                     // 增加目标电阻
+                     target_values.g_target_resistance += 0.1f;
+                    if (target_values.g_target_resistance > 30.0f) target_values.g_target_resistance = 30.0f;
+                }
+                // 保存配置到Flash
+                flash_write_config();
+            }
+             rt_kprintf("上 button clicked2\n");
+        }
         if (btn->id == 2) // 中键长按
         {
             if (current_page == PAGE_OUTPUT){
@@ -154,6 +178,7 @@ static void button_callback(void* arg)
         }
         break;
     default:
+        
         break;
     }
 }
@@ -248,9 +273,9 @@ int button_scan_thread_init(void)
   button_up.usr_button_read = button_up_read;
   button_up.cb = button_callback;
   button_up.pressed_logic_level = 0; // 按键按下为低电平
-  button_up.short_press_start_tick = FLEX_MS_TO_SCAN_CNT(500);
-  button_up.long_press_start_tick = FLEX_MS_TO_SCAN_CNT(1000);
-  button_up.long_hold_start_tick = FLEX_MS_TO_SCAN_CNT(2000);
+  button_up.short_press_start_tick = FLEX_MS_TO_SCAN_CNT(50);
+  button_up.long_press_start_tick = FLEX_MS_TO_SCAN_CNT(500);
+  button_up.long_hold_start_tick = FLEX_MS_TO_SCAN_CNT(1000);
   
   // 注册按钮
   flex_button_register(&button_right);

@@ -50,9 +50,9 @@ uint8_t g_dac_enabled = 0; // 0: 关闭，1: 开启
 
 
 /* PID参数 */
-#define PID_KP 5.0f  // 比例系数
-#define PID_KI 0.1f  // 积分系数
-#define PID_KD 0.01f // 微分系数
+#define PID_KP 2.2f  // 比例系数
+#define PID_KI 0.2f  // 积分系数
+#define PID_KD 0.00f // 微分系数
 
 /* PID相关变量 */
 static float pid_error = 0.0f;      // 误差
@@ -123,7 +123,7 @@ static void dac_test(float voltage)
     if (g_dac_enabled)
     {
         // 当启用时，使用设定的电压值
-        value = (uint16_t)(voltage / 3.3f * 4095.0f);
+        value = (uint16_t)(voltage / 3.312f * 4095.0f);
         // 确保值在有效范围内
         if (value > 4095) value = 4095;
         if (value < 0) value = 0;
@@ -137,38 +137,55 @@ static void dac_test(float voltage)
     // 设置DAC输出值
     HAL_DAC_SetValue(&hdac1, DAC_CHANNEL_1, DAC_ALIGN_12B_R, value);
     
-    // 计算实际输出电压
-  // float output_voltage = (float)value / 4095.0f * 3.3f;
-  //  rt_kprintf("DAC Output: %d (%.2fV) [Enabled: %d]\n", value, output_voltage, g_dac_enabled);
+  
 }
 
-/* PID算法函数 */
+/* PID算法函数（带前馈控制） */
 static float pid_control(float target, float actual)
 {
+    // 前馈控制量：根据电流和DAC输出的1:1关系计算
+    float feedforward = 0.9f*target; // 因为电流和DAC输出的关系是1:1
+    
     // 计算误差
     pid_error = target - actual;
     
     // 计算误差积分
-    pid_error_sum += pid_error * 0.1f; // 0.1f是采样时间（100ms）
+    pid_error_sum += pid_error * 0.02f; // 0.02f是采样时间（20ms）
     
     // 限制误差积分范围，防止积分饱和
-    if (pid_error_sum > 10.0f) pid_error_sum = 10.0f;
-    if (pid_error_sum < -10.0f) pid_error_sum = -10.0f;
+    if (pid_error_sum > 100.0f) pid_error_sum = 100.0f;
+    if (pid_error_sum < -100.0f) pid_error_sum = -100.0f;
     
     // 计算误差微分
-    float pid_error_diff = (pid_error - pid_error_last) / 0.1f;
+    float pid_error_diff = (pid_error - pid_error_last) / 0.02f;
     
     // 计算PID输出
-    pid_output = PID_KP * pid_error + PID_KI * pid_error_sum + PID_KD * pid_error_diff;
+    float pid_output = PID_KP * pid_error + PID_KI * pid_error_sum + PID_KD * pid_error_diff;
     
     // 保存上一次误差
     pid_error_last = pid_error;
     
-    // 限制PID输出范围
-    if (pid_output > 3.3f) pid_output = 3.3f;
-    if (pid_output < 0.0f) pid_output = 0.0f;
+    // 总输出 = 前馈控制量 + PID控制量
+    float total_output = feedforward + pid_output;
     
-    return pid_output;
+    // 限制总输出范围
+    if (total_output > 3.3f) total_output = 3.3f;
+    if (total_output < 0.0f) total_output = 0.0f;
+    
+    return total_output;
+}
+
+/* 开环控制函数 */
+static float open_loop_control(float target)
+{
+    // 直接根据目标值输出，利用电流和DAC输出的 y = 0.933947x + 72.404692
+    float output =(target*1000/0.933947f-72.404692f)/1000;
+    
+    // 限制输出范围
+    if (output > 3.3f) output = 3.3f;
+    if (output < 0.0f) output = 0.0f;
+    
+    return output;
 }
 
 /* 硬件测试线程入口 */
@@ -196,35 +213,34 @@ static void hardware_test_thread_entry(void *parameter)
         // ADC测试：读取电流值（通道15）
         adc_current_value = adc_test_current();
         g_adc_current_value = adc_current_value;
-        g_current_voltage = (float)adc_current_value / 4095.0f * 3.3f;
-        g_current_voltage=g_current_voltage/1.1f;
-        
-       // rt_kprintf("ADC2-IN15(Current): %d (%.2fA)\n", adc_current_value, g_current_voltage);
-        
+        g_current_voltage = (float)adc_current_value / 4095.0f * 3.312f;
+        g_current_voltage=g_current_voltage/1.1f-0.013;
+        g_current_voltage=g_current_voltage*1.0374f - 0.0056f;
         // ADC测试：读取电压值（通道14）
         adc_voltage_value = adc_test_voltage();
         g_adc_voltage_value = adc_voltage_value;
-        g_voltage = 2.0f * (float)adc_voltage_value / 4095.0f * 3.3f;
+        g_voltage = 2.0f * (float)adc_voltage_value / 4095.0f * 3.312f-0.03;
         g_power = g_current_voltage * g_voltage;
         g_resistance = g_voltage / g_current_voltage;
-        // 使用PID算法控制电流
+        // 使用开环控制输出
         if (g_dac_enabled)
         {
-            // 计算PID输出
+            // 计算开环输出
             if (current_mode == MODE_CONST_CURRENT)
             {
-                g_dac_voltage = pid_control(target_values.g_target_current, g_current_voltage);
+                g_dac_voltage = open_loop_control(target_values.g_target_current);
             }
             else if (current_mode == MODE_CONST_POWER)
             {
-               
-                // g_dac_voltage = pid_control(target_values.g_target_power/g_voltage, g_current_voltage);
-                   g_dac_voltage = pid_control(target_values.g_target_power, g_power);
+                 // 对于功率模式，需要根据电压计算目标电流
+                 float target_current = target_values.g_target_power / g_voltage;
+                 g_dac_voltage = open_loop_control(target_current);
             }
             else if (current_mode == MODE_CONST_RESISTANCE)
             {
-              //  g_dac_voltage = pid_control(g_voltage/target_values.g_target_resistance, g_current_voltage);
-                    g_dac_voltage = pid_control(target_values.g_target_resistance,g_resistance);
+                // 对于电阻模式，需要根据电压计算目标电流
+                float target_current = g_voltage / target_values.g_target_resistance;
+                g_dac_voltage = open_loop_control(target_current);
             }
             qled_set_blink(led_orange_pin, 500, 500);
         }else
@@ -236,7 +252,7 @@ static void hardware_test_thread_entry(void *parameter)
      
         // 线程延时100ms，提高PID控制响应速度
 
-        rt_thread_mdelay(100);
+        rt_thread_mdelay(20);
     }
 }
 
@@ -282,7 +298,7 @@ static uint32_t read_flash(uint32_t address)
 static void flash_read_config(void)
 {
     // 解锁Flash
-   // HAL_FLASH_Unlock();
+    unlock_flash();
     
     // 读取Flash数据
     TargetValues *flash_config = (TargetValues *)FLASH_USER_START_ADDR;
@@ -309,7 +325,7 @@ static void flash_read_config(void)
     }
     
     // 锁定Flash
-  //  HAL_FLASH_Lock();
+    lock_flash();
 }
 
 /* 将配置写入Flash */
